@@ -2,7 +2,7 @@ diff --git a/target/linux/lantiq/xrx200/base-files/lib/upgrade/platform.sh b/tar
 index ab01d3bbf7..4ab9aca995 100755
 --- a/target/linux/lantiq/xrx200/base-files/lib/upgrade/platform.sh
 +++ b/target/linux/lantiq/xrx200/base-files/lib/upgrade/platform.sh
-@@ -20,8 +20,46 @@ platform_do_upgrade() {
+@@ -20,8 +20,50 @@ platform_do_upgrade() {
  	zyxel,p-2812hnu-f3)
  		nand_do_upgrade $1
  		;;
@@ -40,11 +40,15 @@ index ab01d3bbf7..4ab9aca995 100755
 +# erst beim ersten Boot des neuen Images und bleibt bei Rueckgabe != 0 fuer
 +# den naechsten Boot liegen - es greift also nur, wenn das Geraet ueberhaupt
 +# bootet. Deshalb hier die laute Fehlermeldung statt eines stillen Weiter.
++# Nach 'exit 1' im case-Zweig endet do_stage2 vor seinem eigenen
++# 'reboot -f'; was dann folgt, entscheidet procd (upgraded).
++# Verhalten nach exit 1 (Reboot durch procd) NICHT verifiziert. Die
++# Meldung setzt daher keine laufende Shell voraus; Rueckweg: Bootmonitor/TFTP.
 +do_fixboss() {
 +	if ! mtd fixboss firmware; then
-+		echo "sysupgrade: 'mtd fixboss firmware' failed after writing the image" >&2
-+		echo "sysupgrade: BOSS header checksum is stale, do not reboot" >&2
-+		echo "sysupgrade: run 'mtd fixboss firmware' manually and check its exit code" >&2
++		echo "sysupgrade: 'mtd fixboss firmware' failed, BOSS header checksum is stale" >&2
++		echo "sysupgrade: the bootmonitor may refuse the new image, recover via bootmonitor/TFTP flash" >&2
++		echo "sysupgrade: if the image boots anyway, 09_fix_crc.sh repeats the fix on first boot" >&2
 +		return 1
 +	fi
 +	return 0

@@ -1,6 +1,8 @@
 #!/bin/bash
 # Portiert das Bintec-RS353-Patchset auf einen OpenWrt-24.10-Quellbaum.
 # Aufruf im Container:  bash /build/port/apply.sh /build/openwrt
+# Aufruf ohne Docker:   build_rs353_linux.sh ruft
+#                       bash "$WORKDIR/port/apply.sh" "$WORKDIR/openwrt"
 # Idempotent: jeder Schritt prueft vorher, ob er schon gesetzt ist.
 set -euo pipefail
 

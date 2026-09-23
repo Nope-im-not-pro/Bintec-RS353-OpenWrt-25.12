@@ -68,7 +68,7 @@ static int mtdsplit_parse_bintec(struct mtd_info *master,
 	if (err)
 		return err;
 
-	parts = kzalloc(BINTEC_NR_PARTS * sizeof(*parts), GFP_KERNEL);
+	parts = kcalloc(BINTEC_NR_PARTS, sizeof(*parts), GFP_KERNEL);
 	if (!parts)
 		return -ENOMEM;
 

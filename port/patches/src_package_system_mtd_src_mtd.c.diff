@@ -6,14 +6,14 @@ index fc7071d940..cd43cf64e2 100644
  	    fprintf(stderr,
  	"        fixtrx                  fix the checksum in a trx header on first boot\n");
  	}
-+	if(mtd_fixboss) {
++	if (mtd_fixboss) {
 +	    fprintf(stderr,
-+	"        fixboss                 fix the boss checksum in bootmonitor parameters\n");
++	"        fixboss                 recompute BOSS firmware header checksum\n");
 +	}
  	if (mtd_fixseama) {
  	    fprintf(stderr,
  	"        fixseama                fix the checksum in a seama header on first boot\n");
-@@ -809,14 +813,14 @@ static void usage(void)
+@@ -809,14 +813,18 @@ static void usage(void)
  	"        -s <number>             skip the first n bytes when appending data to the jffs2 partiton, defaults to \"0\"\n"
  	"        -p <number>             write beginning at partition offset\n"
  	"        -l <length>             the length of data that we want to dump\n");
@@ -22,6 +22,10 @@ index fc7071d940..cd43cf64e2 100644
  	"        -M <magic>              magic number of the image header in the partition (for fixtrx)\n"
  	"        -o offset               offset of the image header in the partition(for fixtrx)\n");
  	}
++	if (mtd_fixboss) {
++	    fprintf(stderr,
++	"        -o offset               offset of the BOSS header in the partition (for fixboss)\n");
++	}
 -	if (mtd_fixtrx || mtd_fixseama || mtd_fixwrg || mtd_fixwrgg) {
 +	if (mtd_fixtrx || mtd_fixseama || mtd_fixwrg || mtd_fixwrgg || mtd_fixboss) {
  		fprintf(stderr,
@@ -30,7 +34,7 @@ index fc7071d940..cd43cf64e2 100644
  	}
  	if (mtd_tpl_recoverflag_write) {
  		fprintf(stderr,
-@@ -860,6 +864,7 @@ int main (int argc, char **argv)
+@@ -860,6 +868,7 @@ int main (int argc, char **argv)
  		CMD_UNLOCK,
  		CMD_JFFS2WRITE,
  		CMD_FIXTRX,
@@ -38,7 +42,7 @@ index fc7071d940..cd43cf64e2 100644
  		CMD_FIXSEAMA,
  		CMD_FIXWRG,
  		CMD_FIXWRGG,
-@@ -985,6 +990,9 @@ int main (int argc, char **argv)
+@@ -985,6 +994,9 @@ int main (int argc, char **argv)
  	} else if (((strcmp(argv[0], "fixtrx") == 0) && (argc == 2)) && mtd_fixtrx) {
  		cmd = CMD_FIXTRX;
  		device = argv[1];
@@ -48,7 +52,7 @@ index fc7071d940..cd43cf64e2 100644
  	} else if (((strcmp(argv[0], "fixseama") == 0) && (argc == 2)) && mtd_fixseama) {
  		cmd = CMD_FIXSEAMA;
  		device = argv[1];
-@@ -1081,6 +1089,11 @@ int main (int argc, char **argv)
+@@ -1081,6 +1093,11 @@ int main (int argc, char **argv)
  				mtd_fixtrx(device, offset, data_size);
  			}
  			break;

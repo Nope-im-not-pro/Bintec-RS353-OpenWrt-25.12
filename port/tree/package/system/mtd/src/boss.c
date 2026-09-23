@@ -51,23 +51,20 @@ struct boss_header {
         uint32_t unknown3; // Fill with 0
 }__attribute__ ((packed));
 
-ssize_t pread(int fd, void *buf, size_t count, off_t offset);
-ssize_t pwrite(int fd, const void *buf, size_t count, off_t offset);
-
 int
 mtd_fixboss(const char *mtd, size_t offset, size_t data_size)
 {
 	size_t data_offset;
 	int fd;
 	struct boss_header *boss;
-	char *first_block;
-	char *buf;
+	char *first_block = NULL;
+	char *buf = NULL;
 	ssize_t res;
 	size_t block_offset;
 	uint32_t crc;
 
 	if (quiet < 2)
-		fprintf(stderr, "Trying to fix BOSS header in %s at 0x%x...\n", mtd, offset);
+		fprintf(stderr, "Trying to fix BOSS header in %s at 0x%zx...\n", mtd, offset);
 
 	fd = mtd_check_open(mtd);
 	if(fd < 0) {
@@ -107,63 +104,95 @@ mtd_fixboss(const char *mtd, size_t offset, size_t data_size)
 	 *
 	 * AM GERAET ZU VERIFIZIEREN: dass der BOSS-Bootmonitor den
 	 * geprueften Bereich tatsaechlich aus image_length ableitet.
-	 * Pruefung ohne Schreibzugriff: Originalimage aus der firmware-
-	 * Partition auslesen, die 52 Header-Bytes dekodieren und
-	 * image_length gegen erasesize - 52 und gegen die Partitionsgroesse
-	 * vergleichen.
+	 * Evidenzstand: Das Ergebnis ist indirekt belegt durch die Fork-
+	 * Historie - dort laeuft fixboss nach jedem Bintec-"mtd write" und
+	 * beim Erstboot seit 38f9a7d899, das Geraet bootet mit diesem
+	 * Header. Unbelegt ist nur der Pruefmechanismus des Bootmonitors.
+	 * Diskriminierender Geraetetest: Bootet das Geraet mit diesem
+	 * Header (image_length = 0x1FFCC bei erasesize 0x20000, crc32 ueber
+	 * Block 0 hinter dem Header) nicht, mit unveraendertem mkbossimg-
+	 * Header aber schon, ist die hier geschriebene Block-0-Semantik
+	 * von image_length und crc32 falsch und neu zu entscheiden.
+	 * Lese-Pruefung ohne Schreibzugriff (informativ, nicht
+	 * entscheidend): Originalimage aus der firmware-Partition auslesen,
+	 * die 52 Header-Bytes dekodieren und image_length gegen
+	 * erasesize - 52 und gegen die Partitionsgroesse vergleichen.
 	 */
 	if (!data_size)
 		data_size = erasesize - sizeof(struct boss_header);
 
+	if (offset & (erasesize - 1)) {
+		fprintf(stderr, "Offset 0x%zx not aligned to erase size 0x%x\n",
+			offset, (unsigned int)erasesize);
+		goto err;
+	}
+
+	if (data_size > (size_t)erasesize - sizeof(struct boss_header)) {
+		fprintf(stderr, "Data size 0x%zx too large, max 0x%zx\n",
+			data_size, (size_t)erasesize - sizeof(struct boss_header));
+		goto err;
+	}
+
 	block_offset = offset & ~(erasesize - 1);
 	offset -= block_offset;
 
-	if (data_offset + data_size > mtdsize) {
-		fprintf(stderr, "Offset 0x%x too large, device size 0x%x\n",
-			(unsigned int)(data_offset + data_size), mtdsize);
-		exit(1);
+	if (data_offset + data_size > (size_t)mtdsize) {
+		fprintf(stderr, "Offset 0x%zx too large, device size 0x%x\n",
+			data_offset + data_size, (unsigned int)mtdsize);
+		goto err;
 	}
 
 	first_block = malloc(erasesize);
 	if (!first_block) {
 		perror("malloc");
-		exit(1);
+		goto err;
 	}
 
 	res = pread(fd, first_block, erasesize, block_offset);
 	if (res != erasesize) {
 		perror("pread");
-		exit(1);
+		goto err;
 	}
 
 	boss = (struct boss_header *)(first_block + offset);
-	boss->image_length = htonl(data_size);
 	if (strncmp(MAGIC_RS353, boss->magic, strlen(MAGIC_RS353)) != 0 &&
 		strncmp(MAGIC_RS230, boss->magic, strlen(MAGIC_RS230)) != 0) {
 		fprintf(stderr, "Unknown or no BOSS magic found\n");
-		exit(1);
+		goto err;
 	}
 
-	fprintf(stderr, "BOSS header found ! Image Length : %08x\n", data_size);
+	fprintf(stderr, "BOSS header found ! Old Image Length : %08x, Old crc32: 0x%08x, New Image Length : %08zx\n",
+		(unsigned int)ntohl(boss->image_length),
+		(unsigned int)ntohl(boss->crc32), data_size);
 
 
 	buf = malloc(data_size);
 	if (!buf) {
 		perror("malloc");
-		exit(1);
+		goto err;
 	}
 
 	res = pread(fd, buf, data_size, block_offset + sizeof(struct boss_header));
-	if (res != data_size) {
+	if (res < 0 || (size_t)res != data_size) {
 		perror("pread");
-		exit(1);
+		goto err;
 	}
 
 	crc = ~crc32buf(buf, data_size);
+	if (ntohl(boss->image_length) == data_size && ntohl(boss->crc32) == crc) {
+		if (quiet < 2)
+			fprintf(stderr, "crc32: 0x%x, checksum ok\n", (unsigned int)crc);
+		close(fd);
+		free(first_block);
+		free(buf);
+		return 0;
+	}
+
+	boss->image_length = htonl(data_size);
 	boss->crc32 = htonl(crc);
 	if (mtd_erase_block(fd, block_offset)) {
-		fprintf(stderr, "Can't erease block at 0x%x (%s)\n", block_offset, strerror(errno));
-		exit(1);
+		fprintf(stderr, "Can't erase block at 0x%zx (%s)\n", block_offset, strerror(errno));
+		goto err;
 	}
 
 	if (quiet < 2)
@@ -171,7 +200,7 @@ mtd_fixboss(const char *mtd, size_t offset, size_t data_size)
 
 	if (pwrite(fd, first_block, erasesize, block_offset) != erasesize) {
 		fprintf(stderr, "Error writing block (%s)\n", strerror(errno));
-		exit(1);
+		goto err;
 	}
 
 	if (quiet < 2)
@@ -183,4 +212,9 @@ mtd_fixboss(const char *mtd, size_t offset, size_t data_size)
 	sync();
 	return 0;
 
+err:
+	free(buf);
+	free(first_block);
+	close(fd);
+	exit(1);
 }

@@ -1,6 +1,6 @@
 #!/bin/sh
-# Phase 4 des UMSETZUNGSPLAN: Port-Kit auf den verifizierten Referenzbaum
-# anwenden, RS353 bauen, statische Checks. Laeuft erst nach REF_BUILD_OK.
+# Port-Kit auf einen OpenWrt-24.10-Baum (vorbereitet nach BUILD_HOWTO.md
+# Abschnitt 4) anwenden, RS353-Profil setzen, bauen, statisch pruefen.
 set -e
 TREE="${1:-/build/openwrt}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -13,11 +13,11 @@ bash "$HERE/apply.sh" "$TREE"
 
 step "4.0 Profil auf RS353 umstellen"
 # H3: Sicherungskopie vor dem destruktiven sed. Rueckweg: cp .config.bak .config
+# touch legt eine fehlende .config an (frischer Baum).
+touch .config
 cp .config .config.bak
 sed -i '/^CONFIG_TARGET_lantiq_xrx200_DEVICE_/d;/^CONFIG_TARGET_PROFILE=/d' .config
-cat >> .config <<'EOF'
-CONFIG_TARGET_lantiq_xrx200_DEVICE_bintec_rs353=y
-EOF
+printf 'CONFIG_TARGET_lantiq=y\nCONFIG_TARGET_lantiq_xrx200=y\nCONFIG_TARGET_lantiq_xrx200_DEVICE_bintec_rs353=y\n' >> .config
 make defconfig >/dev/null
 grep -q '^CONFIG_TARGET_PROFILE="DEVICE_bintec_rs353"' .config
 
@@ -26,13 +26,14 @@ step "4.1 Build"
 # pipefail gibt es unter #!/bin/sh nicht. Deshalb make ohne Pipe in ein Log
 # schreiben, Endmarker setzen (Muster aus BUILD_HOWTO.md Abschnitt 7) und den
 # Marker pruefen. set -e bricht hier ab, bevor PHASE4_OK erreicht wird.
-BUILDLOG=/build/rs353-build.log
+# JOBS (Default 4) und BUILDLOG sind per Umgebung ueberschreibbar.
+BUILDLOG="${BUILDLOG:-/build/rs353-build.log}"
 # M11: Startmarke. Das spaeter gesuchte Image muss juenger als diese Datei
 # sein, sonst stammt es aus einem frueheren Lauf.
 STAMP=/tmp/rs353-build.stamp
 rm -f "$STAMP"
 touch "$STAMP"
-{ make -j"$(nproc)" && echo RS353_BUILD_OK || echo RS353_BUILD_FAIL; } >"$BUILDLOG" 2>&1
+{ make -j"${JOBS:-4}" && echo RS353_BUILD_OK || echo RS353_BUILD_FAIL; } >"$BUILDLOG" 2>&1
 tail -40 "$BUILDLOG"
 grep -q "^RS353_BUILD_OK$" "$BUILDLOG"
 

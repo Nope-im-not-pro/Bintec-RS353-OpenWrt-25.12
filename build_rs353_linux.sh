@@ -36,12 +36,13 @@ STEP="Start"
 # --- Hilfsfunktionen --------------------------------------------------------
 say()  { printf '\n== %s\n' "$*"; }
 info() { printf '   %s\n' "$*"; }
-die()  { printf '\nFEHLER (%s): %s\n' "$STEP" "$*" >&2; exit 1; }
+# Explizites exit loest die ERR-Falle nicht aus, daher ruft die() on_error selbst auf.
+die()  { printf '\nFEHLER (%s): %s\n' "$STEP" "$*" >&2; on_error; exit 1; }
 
 on_error() {
     printf '\n-----------------------------------------------------------\n' >&2
     printf 'Abgebrochen im Schritt: %s\n' "$STEP" >&2
-    printf 'Protokoll: %s\n' "${BUILDLOG:-noch keines}" >&2
+    printf 'Protokoll: %s\n' "${BUILDLOG:-${APPLYLOG:-noch keines}}" >&2
     printf 'Hilfe: BUILD_HOWTO.md, Abschnitt 10 (Typische Fehler)\n' >&2
     printf -- '-----------------------------------------------------------\n' >&2
 }
@@ -87,8 +88,13 @@ PKGS_PFLICHT="build-essential clang flex bison g++ gawk gettext git \
 libncurses-dev libssl-dev python3 python3-dev python3-setuptools rsync unzip \
 zlib1g-dev file wget swig time ca-certificates libelf-dev ecj fastjar \
 java-propose-classpath java-wrappers jq quilt xsltproc zstd"
-# Diese fehlen je nach Distribution, sind aber nicht zwingend:
+# Diese fehlen je nach Distribution, sind aber nicht zwingend
+# (python3-distutils z. B. fehlt ab Ubuntu 24.04 / Python 3.12):
 PKGS_OPTIONAL="gcc-multilib g++-multilib python3-distutils"
+# Paketsatz deckungsgleich mit docker/Dockerfile (python3-distutils dort
+# ebenfalls optional, "|| true"). Bewusste Abweichungen:
+#   - Dockerfile installiert zusaetzlich less nano procps (Bedienung im Container).
+#   - Dockerfile installiert gcc-multilib g++-multilib fest (Debian-Basis bekannt).
 
 if [ "$SKIP_DEPS" -eq 1 ]; then
     info "uebersprungen (--skip-deps)"
@@ -130,7 +136,7 @@ WORKDIR="$(cd "$WORKDIR" && pwd)"
 # darin unterscheiden. Auf NTFS/exFAT/FAT-Mounts zerfaellt der Baum.
 printf 'a' > "$WORKDIR/.casetest_A"
 printf 'b' > "$WORKDIR/.casetest_a"
-CASE_N=$(ls -a "$WORKDIR" | grep -c '^\.casetest_' || true)
+CASE_N=$(find "$WORKDIR" -maxdepth 1 -name '.casetest_*' | wc -l)
 rm -f "$WORKDIR/.casetest_A" "$WORKDIR/.casetest_a"
 [ "$CASE_N" -eq 2 ] || die "Der Arbeitsordner unterscheidet Gross- und Kleinschreibung nicht.
    Das ist typisch fuer eingebundene Windows-Laufwerke (NTFS/exFAT/FAT).
@@ -178,7 +184,13 @@ cp -r "$PROJECT_DIR/port" "$PORT_DIR"
 chmod 755 "$PORT_DIR/apply.sh"
 info "Port-Kit kopiert nach $PORT_DIR"
 
-bash "$PORT_DIR/apply.sh" "$TREE" | tail -30
+APPLYLOG="$WORKDIR/apply.log"
+APPLY_RC=0
+bash "$PORT_DIR/apply.sh" "$TREE" >"$APPLYLOG" 2>&1 || APPLY_RC=$?
+tail -30 "$APPLYLOG"
+[ "$APPLY_RC" -eq 0 ] || die "port/apply.sh ist gescheitert (Exit $APPLY_RC).
+   Oben stehen die letzten 30 Zeilen, vollstaendig in: $APPLYLOG"
+info "apply.sh-Protokoll: $APPLYLOG"
 
 # Gegenprobe gemaess BUILD_HOWTO F5: fuenf Marken muessen im Baum stehen.
 STEP="6/10 Port gegenpruefen"
@@ -234,7 +246,8 @@ while kill -0 "$MAKE_PID" 2>/dev/null; do
     LAST=$(tail -n 1 "$BUILDLOG" 2>/dev/null | cut -c1-70)
     printf '   laeuft seit %s min | %s\n' "$MIN" "$LAST"
 done
-wait "$MAKE_PID"; MAKE_RC=$?
+MAKE_RC=0
+wait "$MAKE_PID" || MAKE_RC=$?
 set -e
 
 if [ "$MAKE_RC" -eq 0 ]; then
@@ -271,8 +284,22 @@ info "Groesse: $SZ Bytes   Grenze: $LIMIT Bytes"
    Siehe BUILD_HOWTO.md, Abschnitt F8."
 info "Groesse in Ordnung (SIZE_OK)"
 
-( cd "$OUTDIR_SRC" && sha256sum -c sha256sums 2>/dev/null | grep -i bintec ) \
-    || info "Hinweis: sha256sums konnte nicht gegengelesen werden, unkritisch."
+IMG_NAME=$(basename "$IMG")
+if [ ! -f "$OUTDIR_SRC/sha256sums" ]; then
+    info "Hinweis: sha256sums fehlt, Gegenprobe entfaellt, unkritisch."
+else
+    SUMLINE=$(awk -v f="$IMG_NAME" '$2 == f || $2 == "*" f' "$OUTDIR_SRC/sha256sums")
+    if [ -z "$SUMLINE" ]; then
+        die "$IMG_NAME steht nicht in sha256sums, die Gegenprobe ist nicht moeglich.
+   Ein ungeprueftes Image darf nicht geflasht werden.
+   Von Hand nachsehen:  cd $TREE/$OUTDIR_SRC && cat sha256sums"
+    else
+        ( cd "$OUTDIR_SRC" && printf '%s\n' "$SUMLINE" | sha256sum -c - ) \
+            || die "Die Pruefsumme des Images stimmt nicht mit sha256sums ueberein.
+   Das Image ist beschaedigt oder veraltet und darf nicht geflasht werden.
+   Von Hand nachpruefen:  cd $TREE/$OUTDIR_SRC && sha256sum -c sha256sums"
+    fi
+fi
 
 # =============================================================================
 say "SCHRITT 10/10  Ergebnis ablegen"

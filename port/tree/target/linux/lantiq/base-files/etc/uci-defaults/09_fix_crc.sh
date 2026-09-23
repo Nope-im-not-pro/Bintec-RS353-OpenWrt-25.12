@@ -1,13 +1,15 @@
 #!/bin/sh
 #
-# Copyright (C) 2007 OpenWrt.org
+# 09_fix_crc.sh - BOSS-Header der firmware-Partition beim ersten Boot
+# pruefen und bei Bedarf korrigieren (Bintec RS353).
 #
-# Fallback-Pfad nach dem Erstflash: "mtd fixboss firmware" schreibt
-# image_length und crc32 im BOSS-Header des ersten Erase-Blocks neu.
-# Im sysupgrade-Weg erledigt das bereits platform.sh (check_fixboss /
-# do_fixboss). Schlaegt der Aufruf hier fehl, liefert das Skript 1;
-# uci_apply_defaults laesst es dann liegen und wiederholt es beim
-# naechsten Boot.
+# Fallback-Pfad nach dem Erstflash: "mtd fixboss firmware" prueft zuerst
+# image_length und crc32 im BOSS-Header des ersten Erase-Blocks und
+# schreibt den Block nur bei Abweichung neu. Im sysupgrade-Weg hat
+# platform.sh (check_fixboss / do_fixboss) bereits korrigiert; der Aufruf
+# hier ist dann ein Lauf ohne Schreibzugriff. Schlaegt der Aufruf fehl,
+# liefert das Skript 1; uci_apply_defaults laesst es dann liegen und
+# wiederholt es beim naechsten Boot.
 #
 
 . /lib/functions.sh
@@ -19,7 +21,11 @@ do_fixboss() {
 		return 1
 	fi
 
-	logger -t fixboss "OK: BOSS header of partition firmware rewritten"
+	if grep -q 'checksum ok' /tmp/fixboss.log; then
+		logger -t fixboss "OK: BOSS header of partition firmware unchanged (checksum ok)"
+	else
+		logger -t fixboss "OK: BOSS header of partition firmware rewritten"
+	fi
 	return 0
 }
 
