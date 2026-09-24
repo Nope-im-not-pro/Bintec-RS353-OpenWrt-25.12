@@ -27,6 +27,7 @@ Hintergrund und Schritte: `PLAN.md`, Befunde des Reviews: `REVIEW_BEFUNDE.md`
 | `docker/` | `Dockerfile` des Buildhosts, nur für den Windows-Docker-Weg |
 | `build_rs353_linux.sh` | Ein-Kommando-Build auf einem Linux-Host, ohne Docker |
 | `BUILD_HOWTO.md` | Schritt-für-Schritt-Anleitung, Docker-Weg und Linux-Weg |
+| `LICENSE` | Lizenztext GPL-2.0, siehe [Lizenz](#lizenz) |
 | `openwrt-RS353_1/` | Fork Xernium, Referenz (lokal, nicht im Git, siehe Herkunft) |
 | `openwrt-RS353_2/` | Fork armSeb (Original), Referenz (lokal, nicht im Git, siehe Herkunft) |
 | `out/` | Ergebnis-Images (wird beim Bauen angelegt) |
@@ -130,3 +131,18 @@ Submodule-Pins.
 würde ein Windows-Klon mit `core.autocrlf=true` CRLF in die Skripte schreiben;
 auf dem Linux-Build-Host bricht das mit `bad interpreter` ab, und `git apply`
 verwirft die Patches unter `port/patches/`.
+
+## Lizenz
+
+Das Repo steht unter der GNU General Public License Version 2, nur in dieser
+Version (SPDX-Kennung `GPL-2.0-only`), wie die Forks, aus denen der Port
+stammt (Xernium in `COPYING`, armSeb in `COPYING` der Branches `openwrt-22.03`
+und `openwrt-24.10`), siehe [Herkunft](#herkunft). Der Volltext steht in
+[`LICENSE`](LICENSE).
+
+Einzelne Dateien tragen eigene Lizenzköpfe, die damit verträglich sind:
+
+- `boss.c`: GPL Version 2 oder nach Wahl jede spätere Version
+- `mtdsplit_bintec.c`: GPL Version 2
+- `mkbossimg.c` aus `000-add-mkbossimg.patch`: GPL Version 2
+- `port/tests/stubs/crc32.c`: freie Nutzung ohne Einschränkung

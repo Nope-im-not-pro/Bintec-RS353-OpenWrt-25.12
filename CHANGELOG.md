@@ -2,6 +2,49 @@
 
 Format: SemVer + ISO-Datum. Sektionen: Hinzugefügt / Geändert / Behoben / Entfernt / Verifiziert.
 
+## [0.3.1] - 2026-09-24
+### Hinzugefügt
+- `LICENSE`: Volltext der GNU General Public License Version 2. Das Repo steht
+  unter `GPL-2.0-only` wie die Forks von Xernium (`COPYING`) und armSeb
+  (`COPYING` der Branches `openwrt-22.03` und `openwrt-24.10`). Der Text stammt
+  aus `openwrt-RS353_1/LICENSES/GPL-2.0`, ohne die SPDX-Metadaten am Anfang
+  der Datei.
+- `README.md`: Abschnitt "Lizenz" mit SPDX-Kennung, Verweis auf `LICENSE` und
+  den eigenen, verträglichen Lizenzköpfen von `boss.c`, `mtdsplit_bintec.c`,
+  `mkbossimg.c` und `port/tests/stubs/crc32.c`.
+
+### Geändert
+- `README.md`: Struktur-Tabelle um `LICENSE` ergänzt.
+- Lokale Doku `ERKLAERUNG.md` (lokal, nicht im Repo): Entscheidung zur Lizenz
+  `GPL-2.0-only` mit den Belegen aus den Forks und den verworfenen
+  Alternativen.
+
+### Verifiziert
+- `cmp` von `LICENSE` gegen `tail -n +16 openwrt-RS353_1/LICENSES/GPL-2.0`:
+  rc 0. sha256 beginnt mit `e6d6a009`, 340 Zeilen, 18011 Byte; derselbe Hash
+  ergibt sich für `LICENSES/GPL-2.0` in den armSeb-Branches `openwrt-22.03`
+  und `openwrt-24.10` ab derselben Stelle.
+- `LICENSE`: CR 0, kein BOM, kein Nicht-ASCII-Zeichen, LF am Ende;
+  `git check-attr` ergibt `text=auto` und `eol=lf`.
+- Vor dem Commit ergab `git add -n LICENSE` die Ausgabe `add 'LICENSE'`,
+  `git check-ignore -v LICENSE` endet mit rc 1 (nicht ignoriert).
+- Suche mit `grep -l 'SPDX-License-[I]dentifier'` über alle Dateien aus
+  `git ls-files -co --exclude-standard`: keine Treffer. Es gibt keine
+  SPDX-Tags, die `LICENSE` widersprechen. Die Klammer `[I]` verhindert, dass
+  die Suche diesen Eintrag selbst findet.
+- Lizenzköpfe gelesen: `boss.c` GPL Version 2 oder später,
+  `mtdsplit_bintec.c` und `mkbossimg.c` aus `000-add-mkbossimg.patch` GPL
+  Version 2, `port/tests/stubs/crc32.c` freie Nutzung; `09_fix_crc.sh` und die
+  DTS ohne Kopf. Alle verträglich mit `GPL-2.0-only`.
+- `README.md`: Anker `#lizenz` und `#herkunft` lösen gegen die Überschriften
+  auf, `LICENSE` existiert; Struktur-Tabelle mit einheitlich zwei Spalten.
+- `README.md`, `CHANGELOG.md` und `ERKLAERUNG.md`:
+  `grep -nP '[\x{2013}\x{2014}]'` (Locale `C.UTF-8`, mit Positivkontrolle),
+  CR-Zählung und BOM-Prüfung ohne Treffer, LF am Dateiende. `ERKLAERUNG.md`
+  enthält nur ASCII.
+- NICHT verifiziert: Lizenzerkennung und Darstellung auf GitHub (vor dem Push
+  nicht prüfbar).
+
 ## [0.3.0] - 2026-09-23
 ### Hinzugefügt
 - `port/tests/boss_test.sh`: Host-Test für `mtd fixboss`. Baut `boss.c` mit
@@ -16,7 +59,8 @@ Format: SemVer + ISO-Datum. Sektionen: Hinzugefügt / Geändert / Behoben / Entf
 - `port/tests/stubs/`: `crc32.c`, `crc32.h`, `main.c`, `mtd.h`, `mtd_stub.c`
   für den Host-Build von `boss.c`. `crc32.c` und `crc32.h` sind bis auf einen
   vorangestellten Herkunftskommentar unveränderte Kopien aus openwrt-24.10.
-  Die Stubs sind nicht getrackt und nicht ignoriert.
+  Die Stubs sind nicht getrackt und nicht ignoriert. Überholt: seit Commit
+  `21404b4` getrackt (`git ls-files port/tests` listet die fünf Dateien).
 - `port/patches/src_package_system_mtd_src_mtd.c.diff`: Usage-Zeile für
   `-o offset` (nur für `fixboss`).
 
@@ -186,7 +230,8 @@ Format: SemVer + ISO-Datum. Sektionen: Hinzugefügt / Geändert / Behoben / Entf
   `NICHT ausgefuehrt: cc/gcc`.
 - `git check-ignore -v`: `port/tests/boss_test.sh` über die Regel `*.sh`,
   `port/z_ALT` über die Regel `z_*`; `port/tests/stubs/*` nicht ignoriert,
-  `git ls-files port/tests` leer.
+  `git ls-files port/tests` leer. Überholt: seit Commit `21404b4` getrackt
+  (`git ls-files port/tests` listet die fünf Dateien).
 - `grep -nP '[\x{2013}\x{2014}]'` (Locale `C.UTF-8`), CR-Zählung und
   BOM-Prüfung auf `CHANGELOG.md`: keine Treffer.
 - `BUILD_HOWTO.md`: TOC-Anker gegen alle Überschriften aufgelöst (60/60 Links,
