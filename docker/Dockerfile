@@ -1,4 +1,4 @@
-# OpenWrt 24.10 Buildhost fuer Bintec RS353 (lantiq/xrx200)
+# OpenWrt 25.12 Buildhost fuer Bintec RS353 (lantiq/xrx200)
 # Quellbaum liegt im named volume /build, NICHT im Windows-Bind-Mount
 # (Windows-FS ist case-insensitive -> OpenWrt-Buildbaum bricht).
 FROM debian:bookworm-20260918-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251

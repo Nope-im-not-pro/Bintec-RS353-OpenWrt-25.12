@@ -1,5 +1,5 @@
 #!/bin/bash
-# Portiert das Bintec-RS353-Patchset auf einen OpenWrt-24.10-Quellbaum.
+# Portiert das Bintec-RS353-Patchset auf einen OpenWrt-25.12-Quellbaum.
 # Aufruf im Container:  bash /build/port/apply.sh /build/openwrt
 # Aufruf ohne Docker:   build_rs353_linux.sh ruft
 #                       bash "$WORKDIR/port/apply.sh" "$WORKDIR/openwrt"
@@ -23,12 +23,11 @@ chmod 755 target/linux/lantiq/base-files/etc/uci-defaults/09_fix_crc.sh
 cp -v "$HERE/tree/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_bintec_rs353.dts" \
       target/linux/lantiq/files/arch/mips/boot/dts/lantiq/
 
-# --- 1.2/1.4 Diffs, die gegen 24.10 sauber greifen -------------------------
+# --- 1.2/1.4 Diffs, die gegen 25.12 sauber greifen -------------------------
 step "1.2/1.4 Fork-Diffs anwenden"
 for d in src_package_system_mtd_src_mtd.c \
          src_package_system_mtd_src_mtd.h \
          src_target_linux_generic_files_drivers_mtd_mtdsplit_Kconfig \
-         src_target_linux_generic_files_drivers_mtd_mtdsplit_Makefile \
          src_target_linux_lantiq_image_lzma-loader_src_board-lantiq.c \
          src_target_linux_lantiq_image_lzma-loader_src_loader.c \
          src_target_linux_lantiq_xrx200_base-files_lib_upgrade_platform.sh ; do
@@ -56,9 +55,19 @@ if ! grep -q '^obj.lantiq' package/system/mtd/src/Makefile; then
   grep -q '^obj.lantiq = boss.o' package/system/mtd/src/Makefile
 fi
 
-# --- 1.3 B7: Kernelconfig 6.6 ---------------------------------------------
-step "1.3 CONFIG_MTD_SPLIT_BINTEC_FW nach xrx200/config-6.6"
-CFG=target/linux/lantiq/xrx200/config-6.6
+# --- Handport: mtdsplit/Makefile (U5: frueherer Diff war am Dateiende
+# verankert, in 25.12 folgen nach mtdsplit_elf.o weitere Zeilen)
+step "1.4 mtdsplit/Makefile mtdsplit_bintec.o"
+MSM=target/linux/generic/files/drivers/mtd/mtdsplit/Makefile
+if ! grep -q 'mtdsplit_bintec\.o' "$MSM"; then
+  sed -i 's/^obj-$(CONFIG_MTD_SPLIT_ELF_FW) += mtdsplit_elf\.o$/&\nobj-$(CONFIG_MTD_SPLIT_BINTEC_FW) += mtdsplit_bintec.o/' \
+      "$MSM"
+  grep -qxF 'obj-$(CONFIG_MTD_SPLIT_BINTEC_FW) += mtdsplit_bintec.o' "$MSM"
+fi
+
+# --- 1.3 B7: Kernelconfig 6.12 --------------------------------------------
+step "1.3 CONFIG_MTD_SPLIT_BINTEC_FW nach xrx200/config-6.12"
+CFG=target/linux/lantiq/xrx200/config-6.12
 if ! grep -q '^CONFIG_MTD_SPLIT_BINTEC_FW=y' "$CFG"; then
   sed -i 's/^CONFIG_MTD_RAW_NAND=y$/&\nCONFIG_MTD_SPLIT_BINTEC_FW=y/' "$CFG"
   grep -q '^CONFIG_MTD_SPLIT_BINTEC_FW=y' "$CFG"
@@ -72,15 +81,17 @@ step "2.1 mkbossimg-Patch nach tools/firmware-utils/patches"
 mkdir -p tools/firmware-utils/patches
 cp -v "$HERE/patches/000-add-mkbossimg.patch" tools/firmware-utils/patches/
 
-# --- 2.2 B4: Kernelpatch nach patches-6.6 ----------------------------------
-step "2.2 lantiq-flash EBU-Endianness-Patch nach patches-6.6"
+# --- 2.2 B4: Kernelpatch nach patches-6.12 ---------------------------------
+step "2.2 lantiq-flash EBU-Endianness-Patch nach patches-6.12"
 # Bewusstes Ueberschreiben, siehe 2.1: reine Kopie unter festem Zielnamen.
+# U2: 25.12 nummeriert dreistellig; 161 sortiert nach 160-owrt-..., das den
+# Patch-Kontext (ltq_mtd->map[i]) erst anlegt.
 cp -v "$HERE/patches/0999-MTD-lantiq-flash-map-add-ebu-endianness-check.patch" \
-      target/linux/lantiq/patches-6.6/0161-owrt-lantiq-flash-map-add-ebu-endianness-check.patch
+      target/linux/lantiq/patches-6.12/161-owrt-lantiq-flash-map-add-ebu-endianness-check.patch
 
 # --- 2.4/3.2 B5: Image-Makefile-Bausteine ----------------------------------
 # Kein Fork-eigenes Build/lzma-loader mehr. Stattdessen Build/loader-common
-# von 24.10 mit ueberschriebenem LZMA_TEXT_START (spaetere Kommandozeilen-
+# von 25.12 mit ueberschriebenem LZMA_TEXT_START (spaetere Kommandozeilen-
 # Zuweisung gewinnt bei make).
 step "3.2 Build/rs353-* nach target/linux/lantiq/image/Makefile"
 MK=target/linux/lantiq/image/Makefile
@@ -127,6 +138,8 @@ fi
 
 # --- 3.1 Device-Definition in vr9.mk ---------------------------------------
 # B2: wpad-mini -> wpad-basic-mbedtls. B6: kmod-swconfig entfaellt (DSA).
+# U7: GPHY-Firmware ist in 25.12 eigenes Paket; DTS setzt GPHY_MODE_GE ->
+# phy11g, beide VR9-Revisionen, da die Revision des Geraets nicht belegt ist.
 step "3.1 Device/bintec_rs353 nach image/vr9.mk"
 VR9=target/linux/lantiq/image/vr9.mk
 if ! grep -q 'Device/bintec_rs353' "$VR9"; then
@@ -152,7 +165,8 @@ block = r"""define Device/bintec_rs353
   # AM GERAET ZU VERIFIZIEREN: reale Obergrenze des BOSS-Bootmonitors.
   IMAGE_SIZE := 31232k
   DEVICE_PACKAGES := kmod-usb-dwc2 kmod-ath9k kmod-i2c-gpio kmod-rtc-s35390a \
-	kmod-usb-ledtrig-usbport wpad-basic-mbedtls
+	kmod-usb-ledtrig-usbport wpad-basic-mbedtls \
+	xrx200-rev1.1-phy11g-firmware xrx200-rev1.2-phy11g-firmware
   SUPPORTED_DEVICES += rs353
 endef
 TARGET_DEVICES += bintec_rs353

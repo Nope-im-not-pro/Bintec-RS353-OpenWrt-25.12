@@ -60,7 +60,7 @@ static int mtdsplit_parse_bintec(struct mtd_info *master,
 
 	if(strncmp(BOSS_MAGIC_RS353, hdr.magic, strlen(BOSS_MAGIC_RS353))!=0 &&
 		strncmp(BOSS_MAGIC_RS230, hdr.magic, strlen(BOSS_MAGIC_RS230))!=0)
-		return -EINVAL;
+		return -ENOENT;
 
 	err = mtd_find_rootfs_from(master, BINTEC_MIN_ROOTFS_OFFS,
 				   master->size, &rootfs_offset, NULL);

@@ -1,8 +1,9 @@
 /*
  * Stub-mtd-Schicht fuer port/tests/boss_test.sh. Ersetzt die Teile von
- * mtd.c (openwrt-24.10, package/system/mtd/src/mtd.c), die boss.c
+ * mtd.c (openwrt-25.12, package/system/mtd/src/mtd.c), die boss.c
  * braucht, durch eine Image-Datei statt /dev/mtd*:
- * - mtd_check_open(): Datei O_RDWR oeffnen, mtdsize = Dateigroesse,
+ * - mtd_check_open(): Datei O_RDWR (write_mode) bzw. O_RDONLY oeffnen,
+ *   mtdsize = Dateigroesse,
  *   erasesize = 0x20000 (RS353-NOR).
  * - mtd_erase_block(): jeden Aufruf als eine Zeile an die Datei aus
  *   BOSS_TEST_ERASE_LOG anhaengen (falls gesetzt), dann den Block mit
@@ -23,12 +24,12 @@ int quiet;
 int mtdsize = 0;
 int erasesize = 0;
 
-int mtd_check_open(const char *mtd)
+int mtd_check_open(const char *mtd, bool write_mode)
 {
 	struct stat st;
 	int fd;
 
-	fd = open(mtd, O_RDWR);
+	fd = open(mtd, write_mode ? O_RDWR : O_RDONLY);
 	if (fd < 0)
 		return -1;
 	if (fstat(fd, &st)) {

@@ -2,6 +2,57 @@
 
 Format: SemVer + ISO-Datum. Sektionen: Hinzugefügt / Geändert / Behoben / Entfernt / Verifiziert.
 
+## [0.4.0] - 2026-09-26
+Achtung: Der unkomprimierte Kernel 6.12 (`vmlinux` 11 278 048 Byte, `_end`
+0x80c086a8) überschreitet die Loader-Grenze 0x9FE000 Byte (LZMA_TEXT_START
+0x80a00000 minus LOADADDR 0x80002000). Build grün, Image nicht bootfähig
+belegt; nicht flashen. `CHECK_DTBS` lief nicht (`dt-doc-validate` fehlt im
+Buildhost). Kein Gerätetest.
+
+### Geändert
+- Zielplattform OpenWrt 25.12 (Kernel 6.12) statt 24.10 (Kernel 6.6):
+  `build_rs353_linux.sh` `OPENWRT_BRANCH="openwrt-25.12"`, Kopfkommentare in
+  `build_rs353_linux.sh`, `port/apply.sh`, `port/phase4.sh`,
+  `docker/Dockerfile`. Stand 24.10 im lokalen Git-Tag `kit-24.10`.
+- `port/apply.sh`: `xrx200/config-6.12` und `patches-6.12`; Kernelpatch-Ziel
+  `161-owrt-lantiq-flash-map-add-ebu-endianness-check.patch`, sortiert nach
+  `160-owrt-lantiq-multiple-flash`.
+- `port/patches/0999-MTD-lantiq-flash-map-add-ebu-endianness-check.patch`:
+  per quilt gegen 25.12 nach Patch 160 aufgefrischt (Hunks `-187`/`-203`),
+  Inhalt unverändert.
+- `port/apply.sh`: `mtdsplit/Makefile` per `sed`-Anker nach
+  `mtdsplit_elf.o` statt Diff (in 25.12 folgen Zeilen nach dem Anker);
+  `src_target_linux_generic_files_drivers_mtd_mtdsplit_Makefile.diff` nach
+  `port/z_ALT/` archiviert.
+- `port/tree/package/system/mtd/src/boss.c`: `mtd_check_open(mtd, true)`
+  (neuer Parameter `write_mode`); `port/tests/stubs/mtd.h`, `mtd_stub.c`
+  spiegeln die Signatur.
+- `README.md`, `BUILD_HOWTO.md`, `ERKLAERUNG.md`, `INFRA.md`, `MVC.md`: 25.12,
+  Kernel 6.12, Docker-Image `openwrt-rs353-build:25.12`, `apk` statt `opkg`.
+
+### Behoben
+- `mtdsplit_bintec.c`: fremde Magic liefert `-ENOENT` statt `-EINVAL`, damit
+  Kernel 6.12 den Parser überspringt statt den Partitionsaufbau abzubrechen.
+- `port/apply.sh` `DEVICE_PACKAGES`: `xrx200-rev1.1-phy11g-firmware` und
+  `xrx200-rev1.2-phy11g-firmware`; ohne sie haben die GPHY-Ports unter 25.12
+  keinen Link.
+
+### Verifiziert
+- `git tag -l kit-24.10` zeigt den Tag auf dem Stand vor der Umstellung.
+- `port/tests/boss_test.sh` im Buildhost-Container: F1-F6, 6/6 OK.
+- `apply.sh` gegen `openwrt-25.12` (44b73b738d) zweimal `PORT_APPLY_OK`,
+  zweiter Lauf mit "already applied"; `mtd.c.diff` ohne Neuerzeugung.
+- `make target/linux/prepare V=s`: `161-owrt-…` nach `160-owrt-…`, ohne
+  Offset, Fuzz oder Reject.
+- lzma-loader `board-lantiq.c`/`loader.c` in 25.12 gegenüber 24.10 nur
+  Whitespace (`git diff -w` leer).
+- `.config`: Profil `DEVICE_bintec_rs353`, `CONFIG_LINUX_6_12=y`, beide
+  phy11g-Pakete `=y`; Manifest des Images enthält beide.
+- `port/phase4.sh`: `RS353_BUILD_OK`, `PHASE4_OK`;
+  `openwrt-lantiq-xrx200-bintec_rs353-squashfs-boss-image.cev` 8 389 174 Byte
+  (Grenze 31 981 568 Byte = 31232 KiB); `sha256sum -c` OK für alle drei
+  `bintec_rs353`-Dateien; fünf Prüfmarken 5/5.
+
 ## [0.3.1] - 2026-09-24
 ### Hinzugefügt
 - `LICENSE`: Volltext der GNU General Public License Version 2. Das Repo steht

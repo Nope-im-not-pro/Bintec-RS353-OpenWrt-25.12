@@ -1,5 +1,5 @@
 #!/bin/sh
-# Port-Kit auf einen OpenWrt-24.10-Baum (vorbereitet nach BUILD_HOWTO.md
+# Port-Kit auf einen OpenWrt-25.12-Baum (vorbereitet nach BUILD_HOWTO.md
 # Abschnitt 4) anwenden, RS353-Profil setzen, bauen, statisch pruefen.
 set -e
 TREE="${1:-/build/openwrt}"

@@ -11,9 +11,11 @@ Referenz, nicht in diesem Repo; Adressen und Commits stehen unter
 `master` ohne RS353-Dateien ausgecheckt, der Support steckt dort in den
 Branches `openwrt-22.03` und `old_2021`.
 
-Daraus ist ein Port-Kit gegen **OpenWrt 24.10** entstanden (`port/`). Es wird
-auf einen frischen 24.10-Quellbaum angewandt und erzeugt das flashbare Image
-`*-bintec_rs353-boss-image.cev`.
+Daraus ist ein Port-Kit gegen **OpenWrt 25.12** (Kernel 6.12) entstanden
+(`port/`). Es wird auf einen frischen 25.12-Quellbaum angewandt und erzeugt
+das flashbare Image `*-bintec_rs353-boss-image.cev`. Der Stand für 24.10
+liegt im Git-Tag `kit-24.10`. Paketverwaltung am Gerät ist ab 25.12 `apk`
+statt `opkg` (`apk update`, `apk add <paket>`).
 
 Bauanleitung: `BUILD_HOWTO.md` (mit Inhaltsverzeichnis).
 Hintergrund und Schritte: `PLAN.md`, Befunde des Reviews: `REVIEW_BEFUNDE.md`
@@ -22,7 +24,7 @@ Hintergrund und Schritte: `PLAN.md`, Befunde des Reviews: `REVIEW_BEFUNDE.md`
 ## Struktur
 | Pfad | Inhalt |
 |---|---|
-| `port/` | Port-Kit 24.10: `apply.sh`, `phase4.sh`, `patches/`, `tree/` |
+| `port/` | Port-Kit 25.12: `apply.sh`, `phase4.sh`, `patches/`, `tree/` |
 | `port/tests/` | Host-Test für `mtd fixboss`: `boss_test.sh` und `stubs/`, siehe [Git-Stand](#git-stand) und `BUILD_HOWTO.md` Abschnitt 9 |
 | `docker/` | `Dockerfile` des Buildhosts, nur für den Windows-Docker-Weg |
 | `build_rs353_linux.sh` | Ein-Kommando-Build auf einem Linux-Host, ohne Docker |
@@ -58,7 +60,7 @@ Ubuntu-Distribution).
 
 Windows mit Docker: `BUILD_HOWTO.md` Abschnitte 2 bis 8.
 
-Von Hand: `<baum>` ist ein frischer Klon des Branches `openwrt-24.10` aus
+Von Hand: `<baum>` ist ein frischer Klon des Branches `openwrt-25.12` aus
 `https://git.openwrt.org/openwrt/openwrt.git` auf einem case-sensitiven
 Dateisystem, dieselbe Quelle wie im Build-Skript
 (`build_rs353_linux.sh:29-30`). Die Reihenfolge folgt dem Skript: klonen,
@@ -66,7 +68,7 @@ Feeds, `apply.sh`, bauen (`build_rs353_linux.sh:161`, `:170-171`, `:189`).
 Klon und `apply.sh` laufen vom Projekt-Root aus, die übrigen Schritte im Baum:
 
 ```bash
-git clone --branch openwrt-24.10 https://git.openwrt.org/openwrt/openwrt.git <baum>
+git clone --branch openwrt-25.12 https://git.openwrt.org/openwrt/openwrt.git <baum>
 ( cd <baum> && ./scripts/feeds update -a && ./scripts/feeds install -a )
 bash port/apply.sh <baum>
 cd <baum>
@@ -79,11 +81,16 @@ make -j4
 den Bootmonitor an der seriellen Konsole (3,3 V TTL, 115200 8N1), nicht über
 `sysupgrade`. Ohne serielle Konsole gibt es keinen Rückweg.
 
+Stand 0.4.0: Der unkomprimierte Kernel 6.12 (11 278 048 Byte) ist größer als
+der Platz unter dem lzma-Loader (0x9FE000 = 10 477 568 Byte, Loader ab
+0x80a00000, Kernel ab 0x80002000). Das 25.12-Image nicht flashen, bis das
+gelöst ist.
+
 ## Herkunft
 
 Der Port in `port/` ist aus zwei fremden Forks abgeleitet. Diese Forks sind
 nicht Teil dieses Repos und werden zum Bauen nicht gebraucht:
-`build_rs353_linux.sh` klont einen frischen OpenWrt-24.10-Baum und wendet
+`build_rs353_linux.sh` klont einen frischen OpenWrt-25.12-Baum und wendet
 `port/` darauf an.
 
 | Ordner lokal | Repo | Branch | Commit | Datum | Rolle |

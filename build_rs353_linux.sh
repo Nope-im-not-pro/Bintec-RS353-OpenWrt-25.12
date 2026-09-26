@@ -2,7 +2,7 @@
 # =============================================================================
 # build_rs353_linux.sh
 #
-# Baut das OpenWrt-24.10-Image fuer den Bintec RS353 auf einem Linux-Rechner.
+# Baut das OpenWrt-25.12-Image fuer den Bintec RS353 auf einem Linux-Rechner.
 # OHNE Docker. Alles laeuft direkt auf dem Host.
 #
 # Fuer Laien gedacht: einmal starten, warten, fertiges Image einsammeln.
@@ -26,7 +26,7 @@ set -euo pipefail
 WORKDIR="${HOME}/openwrt-rs353-build"
 JOBS=4
 SKIP_DEPS=0
-OPENWRT_BRANCH="openwrt-24.10"
+OPENWRT_BRANCH="openwrt-25.12"
 OPENWRT_URL="https://git.openwrt.org/openwrt/openwrt.git"
 IMAGE_LIMIT_KIB=31232          # Obergrenze aus port/apply.sh, nicht anheben
 MIN_FREE_GIB=40

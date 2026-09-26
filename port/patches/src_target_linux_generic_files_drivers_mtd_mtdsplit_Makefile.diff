@@ -1,9 +1,0 @@
-diff --git a/target/linux/generic/files/drivers/mtd/mtdsplit/Makefile b/target/linux/generic/files/drivers/mtd/mtdsplit/Makefile
-index 1461099b7c..0f43e47939 100644
---- a/target/linux/generic/files/drivers/mtd/mtdsplit/Makefile
-+++ b/target/linux/generic/files/drivers/mtd/mtdsplit/Makefile
-@@ -15,3 +15,4 @@ obj-$(CONFIG_MTD_SPLIT_WRGG_FW) += mtdsplit_wrgg.o
- obj-$(CONFIG_MTD_SPLIT_MINOR_FW) += mtdsplit_minor.o
- obj-$(CONFIG_MTD_SPLIT_JIMAGE_FW) += mtdsplit_jimage.o
- obj-$(CONFIG_MTD_SPLIT_ELF_FW) += mtdsplit_elf.o
-+obj-$(CONFIG_MTD_SPLIT_BINTEC_FW) += mtdsplit_bintec.o

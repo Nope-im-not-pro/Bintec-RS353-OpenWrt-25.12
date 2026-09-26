@@ -66,7 +66,7 @@ mtd_fixboss(const char *mtd, size_t offset, size_t data_size)
 	if (quiet < 2)
 		fprintf(stderr, "Trying to fix BOSS header in %s at 0x%zx...\n", mtd, offset);
 
-	fd = mtd_check_open(mtd);
+	fd = mtd_check_open(mtd, true);
 	if(fd < 0) {
 		fprintf(stderr, "Could not open mtd device: %s\n", mtd);
 		exit(1);

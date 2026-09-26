@@ -1,4 +1,4 @@
-# BUILD_HOWTO - Bintec RS353 auf OpenWrt 24.10 bauen
+# BUILD_HOWTO - Bintec RS353 auf OpenWrt 25.12 bauen
 
 Schritt-für-Schritt-Anleitung vom leeren Rechner bis zum fertigen Image
 `*-bintec_rs353-boss-image.cev`.
@@ -11,10 +11,10 @@ Feste Namen, die in der ganzen Anleitung vorkommen:
 
 | Name | Bedeutung |
 |---|---|
-| `openwrt-rs353-build:24.10` | Docker-Image des Buildhosts |
+| `openwrt-rs353-build:25.12` | Docker-Image des Buildhosts |
 | `owrt-build` | Laufender Container |
 | `openwrt-rs353-src` | Named Volume, im Container auf `/build` gemountet |
-| `/build/openwrt` | Produktiver OpenWrt-24.10-Quellbaum |
+| `/build/openwrt` | Produktiver OpenWrt-25.12-Quellbaum |
 | `/build/portcheck` | Zweitbaum zum gefahrlosen Testen des Port-Kits |
 | `/build/port` | Kopie des Port-Kits im Container |
 
@@ -31,7 +31,7 @@ diesem Projekt bereits aufgetreten sind.
 - [2. Build-Docker-Image bauen](#2-build-docker-image-bauen)
 - [3. Container starten](#3-container-starten)
 - [4. Quellbaum und Feeds vorbereiten](#4-quellbaum-und-feeds-vorbereiten)
-  - [4.1 OpenWrt 24.10 klonen](#41-openwrt-2410-klonen)
+  - [4.1 OpenWrt 25.12 klonen](#41-openwrt-2512-klonen)
   - [4.2 Stand prüfen](#42-stand-prüfen)
   - [4.3 Feeds holen und einhängen](#43-feeds-holen-und-einhängen)
   - [4.4 Zweitbaum für gefahrloses Testen (empfohlen)](#44-zweitbaum-für-gefahrloses-testen-empfohlen)
@@ -140,7 +140,7 @@ es ist bereits vorhanden.
 +-- port\                           das "Port-Kit": alles Gerätespezifische
 |   +-- apply.sh                    trägt das Port-Kit in einen Quellbaum ein
 |   +-- phase4.sh                   Profil setzen, bauen, prüfen (siehe F11)
-|   +-- patches\                    9 Diffs/Patches gegen 24.10
+|   +-- patches\                    8 Diffs/Patches gegen 25.12
 |   +-- tests\                      Host-Test für mtd fixboss (Abschnitt 9)
 |   \-- tree\                       4 komplett neue Dateien
 |       +-- package\system\mtd\src\boss.c
@@ -182,20 +182,20 @@ nicht amd64 ist, `--platform linux/amd64` an `docker build` und an `docker run`
 (Abschnitt 3) anhängen.
 
 ```powershell
-docker build -t openwrt-rs353-build:24.10 --build-arg UID=1000 --build-arg GID=1000 <PFAD>\OpenWRT_Update\docker
+docker build -t openwrt-rs353-build:25.12 --build-arg UID=1000 --build-arg GID=1000 <PFAD>\OpenWRT_Update\docker
 ```
 
-Erfolg: Letzte Zeile lautet `naming to docker.io/library/openwrt-rs353-build:24.10`
-oder `Successfully tagged openwrt-rs353-build:24.10`. Dauer beim ersten Mal 5
+Erfolg: Letzte Zeile lautet `naming to docker.io/library/openwrt-rs353-build:25.12`
+oder `Successfully tagged openwrt-rs353-build:25.12`. Dauer beim ersten Mal 5
 bis 15 Minuten.
 
 Gegenprobe, falls unklar ist ob das Image schon existiert:
 
 ```bash
-docker images openwrt-rs353-build:24.10
+docker images openwrt-rs353-build:25.12
 ```
 
-Erfolg: Eine Zeile mit `TAG 24.10` und einer Größe um 1.6 GB.
+Erfolg: Eine Zeile mit `TAG 25.12` und einer Größe um 1.6 GB.
 
 ---
 
@@ -206,7 +206,7 @@ Linux-Dateisystem von Docker, nicht auf `C:`. Genau das ist der Punkt: kein
 Windows-Dateisystem im Quellbaum.
 
 ```bash
-docker run -d --name owrt-build -v openwrt-rs353-src:/build -w /build openwrt-rs353-build:24.10 sleep infinity
+docker run -d --name owrt-build -v openwrt-rs353-src:/build -w /build openwrt-rs353-build:25.12 sleep infinity
 ```
 
 Erfolg: Es wird eine 64-stellige Container-ID ausgegeben.
@@ -240,10 +240,10 @@ ab.
 
 ## 4. Quellbaum und Feeds vorbereiten
 
-### 4.1 OpenWrt 24.10 klonen
+### 4.1 OpenWrt 25.12 klonen
 
 ```bash
-docker exec -u build owrt-build bash -lc "cd /build && git clone --branch openwrt-24.10 https://git.openwrt.org/openwrt/openwrt.git openwrt"
+docker exec -u build owrt-build bash -lc "cd /build && git clone --branch openwrt-25.12 https://git.openwrt.org/openwrt/openwrt.git openwrt"
 ```
 
 Erfolg: Letzte Zeile `Resolving deltas: 100% (...)`, danach existiert
@@ -257,8 +257,11 @@ Normalfall, Schritt überspringen.
 docker exec -u build owrt-build bash -lc "cd /build/openwrt && git log --oneline -1"
 ```
 
-Erfolg: Eine Zeile wie `a1ea57b kernel: bump 6.6 to 6.6.151`. Der genaue Hash
-darf abweichen; entscheidend ist ein Commit aus dem Zweig `openwrt-24.10`.
+Erfolg: Eine Zeile wie `44b73b738d airoha: an7583: add USB nodes to SoC dtsi`.
+Der genaue Hash darf abweichen; entscheidend ist ein Commit aus dem Zweig
+`openwrt-25.12`. Liegt unter `/build/openwrt` noch ein 24.10-Baum aus einem
+früheren Lauf, zeigt diese Zeile dessen Commit; dann den alten Baum vorher
+umbenennen (`mv openwrt openwrt-24.10`) und 4.1 wiederholen.
 
 ### 4.3 Feeds holen und einhängen
 
@@ -373,8 +376,9 @@ docker exec -u build owrt-build bash -lc "cd /build/openwrt && git status --porc
 ```
 
 Erfolg: Richtwert 18 Zeilen, abgezählt an den Schritten von `apply.sh` -
-zwölf mit `M` (geänderte Dateien: sieben per `*.diff`, fünf per Handport in
-`mtd/src/Makefile`, `config-6.6`, `image/Makefile`, `vr9.mk`, `02_network`)
+zwölf mit `M` (geänderte Dateien: sechs per `*.diff`, sechs per Handport in
+`mtd/src/Makefile`, `mtdsplit/Makefile`, `config-6.12`, `image/Makefile`,
+`vr9.mk`, `02_network`)
 und sechs mit `??` (neue Dateien: `vr9_bintec_rs353.dts`, `boss.c`,
 `mtdsplit_bintec.c`, `09_fix_crc.sh`, die beiden kopierten Patches). Ist ein
 Zielordner neu, zeigt git statt der Datei den Ordner. Ist die Liste leer,
@@ -900,7 +904,7 @@ Docker-Abschnitten dieser Anleitung:
 | 1 | Nicht-root, Projektordner vollständig | F3, Abschnitt 1 |
 | 2 | Pakete per `apt-get` installieren | `docker/Dockerfile` |
 | 3 | Groß-/Kleinschreibung und 40 GB Platz prüfen | Abschnitt 0 |
-| 4 | `git clone --branch openwrt-24.10` | 4.1, 4.2 |
+| 4 | `git clone --branch openwrt-25.12` | 4.1, 4.2 |
 | 5 | `feeds update -a` und `install -a` | 4.3 |
 | 6 | `bash port/apply.sh` mit Log, danach fünf Prüfmarken | 5.5, F5 |
 | 7 | Profil setzen, `.config.bak` sichern | 6.1, 6.2, F9 |
@@ -1003,7 +1007,7 @@ Innerhalb von WSL, im Linux-Dateisystem:
 
 ```bash
 sudo apt-get update && sudo apt-get install -y git
-git clone https://github.com/Nope-im-not-pro/Bintec-RS353-OpenWrt-24.10 ~/rs353
+git clone https://github.com/Nope-im-not-pro/Bintec-RS353-OpenWrt-25.12 ~/rs353
 cd ~/rs353
 bash build_rs353_linux.sh --jobs 6
 ```
